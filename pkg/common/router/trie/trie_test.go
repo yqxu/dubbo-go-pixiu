@@ -202,4 +202,9 @@ func TestTrie_ParamMatch(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "", node.GetBizInfo())
 	assert.True(t, ret)
+
+	ret, _ = trie.Put("POST/api/v1/test-dubbo/:application/:interface", "tttt")
+	str = "http://localhost:8882/api/v1/test-dubbo/UserProvider/org.apache.dubbo.sample.UserProvider?group=dubbo-test&version=myversion&method=getUser"
+	node, _, ok = trie.Match(stringutil.GetTrieKey("POST", str))
+	assert.Equal(t, "tttt", node.GetBizInfo())
 }
