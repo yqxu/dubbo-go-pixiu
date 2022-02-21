@@ -4,7 +4,7 @@ type Tester struct {
 	operator string
 	_type    string // batch / single
 	priority int
-	lazy     bool
+	lazy     bool //if lazy load or not
 }
 
 type batchTester struct {
