@@ -123,6 +123,13 @@ func (trie Trie) Match(withOutHost string) (*Node, []string, bool) {
 	return node, param, ok
 }
 
+// MatchAll if url match N result. Match method will return one with first priority. MatchAll returns all N result.
+func (trie Trie) MatchAll(withOutHost string) ([]*Node, error) {
+	withOutHost = strings.Split(withOutHost, "?")[0]
+	parts := stringutil.Split(withOutHost)
+	return trie.root.MatchAll(parts)
+}
+
 //Remove remove key and value from trie.  logic delete can't release memory, rebuild if necessary when lake of memory.
 func (trie Trie) Remove(withOutHost string) (*Node, error) {
 	n, _, _, e := trie.Get(withOutHost)
@@ -234,6 +241,47 @@ func (node *Node) Match(parts []string) (*Node, []string, bool) {
 		return node.MatchAllNode, []string{}, true
 	}
 	return nil, nil, false
+}
+
+func (node *Node) MatchAll(parts []string) ([]*Node, error) {
+	key := parts[0]
+	childKeys := parts[1:]
+	// isEnd is the end of url path, means node is a place of url end,so the path with parentNode has a real url exists.
+	isEnd := len(childKeys) == 0
+	retSet := []*Node{}
+	if isEnd {
+		if node.children != nil && node.children[key] != nil && node.children[key].endOfPath {
+			retSet = append(retSet, node.children[key])
+		}
+		//consider  trie node ：/aaa/bbb/xxxxx/ccc/ddd  /aaa/bbb/:id/ccc   and request url is ：/aaa/bbb/xxxxx/ccc
+		if node.PathVariableNode != nil {
+			if node.PathVariableNode.endOfPath {
+				retSet = append(retSet, node.PathVariableNode)
+			}
+		}
+	} else {
+		if node.children != nil && node.children[key] != nil {
+			ret, err := node.children[key].MatchAll(childKeys)
+			if err != nil {
+				return nil, err
+			}
+			retSet = append(retSet, ret...)
+		}
+		if node.PathVariableNode != nil {
+			ret, err := node.PathVariableNode.MatchAll(childKeys)
+			if err != nil {
+				return nil, err
+			}
+			retSet = append(retSet, ret...)
+		}
+	}
+	if node.children != nil && node.children[key] != nil && node.children[key].MatchAllNode != nil {
+		retSet = append(retSet, node.children[key].MatchAllNode)
+	}
+	//if node.MatchAllNode != nil {
+	//	retSet = append(retSet, node.MatchAllNode)
+	//}
+	return retSet, nil
 }
 
 //Get node get

@@ -65,6 +65,119 @@ func TestTrie_Put(t *testing.T) {
 	assert.False(t, ret)
 }
 
+func TestTrie_MatchAll(t *testing.T) {
+	trie := NewTrie()
+	_, _ = trie.Put("POST/**", "postRoot")
+	_, _ = trie.Put("GET/**", "getRoot")
+	ret, _ := trie.Put("/path1/:pathvarible1/path2/:pathvarible2", "test1")
+	_, _ = trie.Put("/a/b", "ab")
+
+	_, _ = trie.Put("POST/api/v1/**", "ab")
+
+	ret, _ = trie.Put("/path2/:pathvarible1/path2/:pathvarible2", "")
+
+	ret, _ = trie.Put("/path2/3/path2/:pathvarible2", "")
+
+	ret, _ = trie.Put("/path2/3/path2/:pathvarible2", "")
+
+	ret, _ = trie.Put("/path2/3/path2/:pathvarible2/3", "")
+
+	ret, _ = trie.Put("/path2/3/path2/:432423/3", "")
+
+	ret, _ = trie.Put("/path2/3/path2/:432423/3/a/b/c/d/:fdsa", "")
+
+	ret, _ = trie.Put("/path2/3/path2/:432423/3/a/b/c/c/:fdsa", "")
+
+	ret, _ = trie.Put("/path2/3/path2/:432423/3/a/b/c/c/:fdsafdsafsdafsda", "")
+
+	ret, _ = trie.Put("/path1/:pathvarible1/path2/:pathvarible2/:fdsa", "")
+
+	ret, _ = trie.Put("/path1/:432/path2/:34", "")
+
+	ret, _ = trie.Put("/a/:432/b/:34/**", "test**")
+
+	ret, _ = trie.Put("/a/:432/b/:34/**", "")
+
+	assert.True(t, ret)
+
+	list, _ := trie.MatchAll("/a/v1/b/v2/sadf/asdf")
+	assert.True(t, len(list) > 0)
+
+	list, _ = trie.MatchAll("/a/v1/b/v2/sadf")
+	assert.True(t, len(list) > 0)
+
+	list, _ = trie.MatchAll("/a/v1/b/v2")
+	assert.True(t, len(list) > 0)
+
+	list, _ = trie.MatchAll("/path1/v1/path2/v2")
+	assert.True(t, len(list) > 0)
+
+	list, _ = trie.MatchAll("/path1/12/path2/12?a=b")
+	assert.True(t, len(list) > 0)
+
+	list, _ = trie.MatchAll("POST/api/v1")
+}
+
+func TestTrie_Clear(t *testing.T) {
+	v := "http://baidu.com/aa/bb"
+	v = stringutil.GetTrieKey("PUT", v)
+	assert.Equal(t, "PUT/aa/bb", v)
+
+	trie := NewTrie()
+	ret, _ := trie.Put("/path1/:pathvarible1/path2/:pathvarible2", "")
+	assert.True(t, ret)
+
+	ret, _ = trie.Put("/path1/:pathvarible1/path2/:pathvarible2/**", "")
+	assert.True(t, ret)
+
+	ret, _ = trie.Put("/path2/:pathvarible1/path2/:pathvarible2", "")
+	assert.True(t, ret)
+	ret, _ = trie.Put("/path2/3/path2/:pathvarible2", "")
+	assert.True(t, ret)
+
+	ret, _ = trie.Put("/path2/3/path2/:pathvarible2", "")
+	assert.False(t, ret)
+
+	ret, _ = trie.Put("/path2/3/path2/:pathvarible2/3", "")
+	assert.True(t, ret)
+	ret, _ = trie.Put("/path2/3/path2/:432423/3", "")
+	assert.False(t, ret)
+	ret, _ = trie.Put("/path2/3/path2/:432423/3/a/b/c/d/:fdsa", "")
+	assert.True(t, ret)
+
+	ret, _ = trie.Put("/path2/3/path2/:432423/3/a/b/c/c/:fdsa", "")
+	assert.True(t, ret)
+
+	ret, _ = trie.Put("/path2/3/path2/:432423/3/a/b/c/c/:fdsafdsafsdafsda", "")
+	assert.False(t, ret)
+
+	ret, _ = trie.Put("/path1/:pathvarible1/path2/:pathvarible2/:fdsa", "")
+	assert.True(t, ret)
+
+	ret, _ = trie.Put("/path1/:432/path2/:34", "")
+	assert.False(t, ret)
+	assert.False(t, trie.IsEmpty())
+	trie.Clear()
+	assert.True(t, trie.IsEmpty())
+}
+
+func TestTrie_ParamMatch(t *testing.T) {
+	trie := NewTrie()
+	ret, _ := trie.Put("PUT/path1/:pathvarible1/path2/:pathvarible2", "")
+	assert.True(t, ret)
+	str := "https://www.baidu.com/path1/param1/path2/param2?aaaaa=aaaaa"
+
+	node, _, ok := trie.Match(stringutil.GetTrieKey("PUT", str))
+	assert.True(t, ok)
+	assert.Equal(t, "", node.GetBizInfo())
+
+	ret, _ = trie.Put("PUT/path1/:pathvarible1/path2", "")
+	node, _, ok = trie.Match(stringutil.GetTrieKey("PUT", str))
+	assert.True(t, ok)
+	assert.Equal(t, "", node.GetBizInfo())
+	assert.True(t, ret)
+}
+
 func TestTrie_MatchAndGet(t *testing.T) {
 	trie := NewTrie()
 
@@ -144,65 +257,4 @@ func TestTrie_MatchAndGet(t *testing.T) {
 	node, _, ok = trie.Match("/path1/12/path2/12?a=b")
 	assert.True(t, ok)
 	assert.True(t, node.GetBizInfo() == "test1")
-}
-
-func TestTrie_Clear(t *testing.T) {
-	v := "http://baidu.com/aa/bb"
-	v = stringutil.GetTrieKey("PUT", v)
-	assert.Equal(t, "PUT/aa/bb", v)
-
-	trie := NewTrie()
-	ret, _ := trie.Put("/path1/:pathvarible1/path2/:pathvarible2", "")
-	assert.True(t, ret)
-
-	ret, _ = trie.Put("/path1/:pathvarible1/path2/:pathvarible2/**", "")
-	assert.True(t, ret)
-
-	ret, _ = trie.Put("/path2/:pathvarible1/path2/:pathvarible2", "")
-	assert.True(t, ret)
-	ret, _ = trie.Put("/path2/3/path2/:pathvarible2", "")
-	assert.True(t, ret)
-
-	ret, _ = trie.Put("/path2/3/path2/:pathvarible2", "")
-	assert.False(t, ret)
-
-	ret, _ = trie.Put("/path2/3/path2/:pathvarible2/3", "")
-	assert.True(t, ret)
-	ret, _ = trie.Put("/path2/3/path2/:432423/3", "")
-	assert.False(t, ret)
-	ret, _ = trie.Put("/path2/3/path2/:432423/3/a/b/c/d/:fdsa", "")
-	assert.True(t, ret)
-
-	ret, _ = trie.Put("/path2/3/path2/:432423/3/a/b/c/c/:fdsa", "")
-	assert.True(t, ret)
-
-	ret, _ = trie.Put("/path2/3/path2/:432423/3/a/b/c/c/:fdsafdsafsdafsda", "")
-	assert.False(t, ret)
-
-	ret, _ = trie.Put("/path1/:pathvarible1/path2/:pathvarible2/:fdsa", "")
-	assert.True(t, ret)
-
-	ret, _ = trie.Put("/path1/:432/path2/:34", "")
-
-	assert.False(t, ret)
-	assert.False(t, trie.IsEmpty())
-	trie.Clear()
-	assert.True(t, trie.IsEmpty())
-}
-
-func TestTrie_ParamMatch(t *testing.T) {
-	trie := NewTrie()
-	ret, _ := trie.Put("PUT/path1/:pathvarible1/path2/:pathvarible2", "")
-	assert.True(t, ret)
-	str := "https://www.baidu.com/path1/param1/path2/param2?aaaaa=aaaaa"
-
-	node, _, ok := trie.Match(stringutil.GetTrieKey("PUT", str))
-	assert.True(t, ok)
-	assert.Equal(t, "", node.GetBizInfo())
-
-	ret, _ = trie.Put("PUT/path1/:pathvarible1/path2", "")
-	node, _, ok = trie.Match(stringutil.GetTrieKey("PUT", str))
-	assert.True(t, ok)
-	assert.Equal(t, "", node.GetBizInfo())
-	assert.True(t, ret)
 }
