@@ -243,6 +243,7 @@ func (node *Node) Match(parts []string) (*Node, []string, bool) {
 	return nil, nil, false
 }
 
+// MatchAll 性能退化到 2^n n=变量节点数，极端情况下等价于一次结果集全遍历。不推荐使用方在路径靠前位置大量使用单节点通配'/*',':xx'等。'/**'全量通配因为无子树，不会造成性能退化可随意使用。
 func (node *Node) MatchAll(parts []string) ([]*Node, error) {
 	key := parts[0]
 	childKeys := parts[1:]
