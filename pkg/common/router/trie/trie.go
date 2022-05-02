@@ -18,6 +18,8 @@
 package trie
 
 import (
+	"github.com/apache/dubbo-go-pixiu/pkg/common/router/chain"
+	stdHttp "net/http"
 	"strings"
 )
 
@@ -32,6 +34,7 @@ import (
 
 // Trie
 type Trie struct {
+	Next chain.MatchNode
 	root Node
 }
 
@@ -56,6 +59,11 @@ type Node struct {
 	MatchAllNode     *Node            // /a/b/**  /** is a match all Node.
 	endOfPath        bool             // if true means a real path exists ,  /a/b/c/d only node of d is true, a,b,c is false.
 	bizInfo          interface{}      // route info and any other info store here.
+	PTrie            *Trie
+}
+
+func (trie *Trie) matchNext() bool {
+	return trie.root.Clear()
 }
 
 func (trie *Trie) Clear() bool {
@@ -121,6 +129,13 @@ func (trie Trie) Match(withOutHost string) (*Node, []string, bool) {
 		param[i] = temp
 	}
 	return node, param, ok
+}
+
+func (trie Trie) MatchForChain(r *stdHttp.Request) chain.MatchResult {
+	var uri = stringutil.GetTrieKey(r.Method, r.URL.Path)
+	uri = strings.Split(uri, "?")[0]
+	parts := stringutil.Split(uri)
+	return trie.root.MatchForChain(parts, []string{}, r)
 }
 
 // MatchAll if url match N result. Match method will return one with first priority. MatchAll returns all N result.
@@ -200,8 +215,88 @@ func (node *Node) GetBizInfo() interface{} {
 	return node.bizInfo
 }
 
-//Match node match
+func DoNextMatch(triePath string, node *Node, r *stdHttp.Request) (matchRet chain.MatchResult, ok bool) {
+	var path = BuildUrlMatchPath(triePath)
+	if node.PTrie.Next == nil {
+		return chain.EndOfChainSuccessResult(path, node.bizInfo), true
+	}
 
+	matchResult := node.PTrie.Next.DoMatch(r, path)
+	if matchResult.MatchSuccess {
+		return matchResult, true
+	}
+
+	if node.bizInfo != nil {
+		return chain.EndOfChainSuccessResult(path, node.bizInfo), true
+	}
+
+	return matchResult, false
+
+}
+
+//MatchForChain node match for chain
+func (node *Node) MatchForChain(parts []string, matchedParts []string, r *stdHttp.Request) chain.MatchResult {
+	key := parts[0]
+	childKeys := parts[1:]
+
+	// isEnd is the end of url path, means node is a place of url end,so the path with parentNode has a real url exists.
+	isEnd := len(childKeys) == 0
+	if isEnd {
+
+		if node.children != nil && node.children[key] != nil && node.children[key].endOfPath {
+			matchedParts = append(matchedParts, key)
+			var triePath = strings.Join(matchedParts, "/")
+			matchResult, ok := DoNextMatch(triePath, node.children[key], r)
+			if ok {
+				return matchResult
+			}
+		}
+		//consider  trie node ：/aaa/bbb/xxxxx/ccc/ddd  /aaa/bbb/:id/ccc   and request url is ：/aaa/bbb/xxxxx/ccc
+		if node.PathVariableNode != nil {
+			if node.PathVariableNode.endOfPath {
+				matchedParts = append(matchedParts, "*")
+				var triePath = strings.Join(matchedParts, "/")
+				matchResult, ok := DoNextMatch(triePath, node.children[key], r)
+				if ok {
+					return matchResult
+				}
+			}
+		}
+
+	} else {
+		if node.children != nil && node.children[key] != nil {
+			matchedParts = append(matchedParts, key)
+			ret := node.children[key].MatchForChain(childKeys, matchedParts, r)
+			if ret.MatchSuccess {
+				return ret
+			}
+		}
+		if node.PathVariableNode != nil {
+			matchedParts = append(matchedParts, "*")
+			ret := node.PathVariableNode.MatchForChain(childKeys, matchedParts, r)
+			return ret
+		}
+	}
+	if node.children != nil && node.children[key] != nil && node.children[key].MatchAllNode != nil {
+		matchedParts = append(matchedParts, key, "**")
+		var triePath = strings.Join(matchedParts, "/")
+		matchResult, ok := DoNextMatch(triePath, node.children[key], r)
+		if ok {
+			return matchResult
+		}
+	}
+	if node.MatchAllNode != nil {
+		matchedParts = append(matchedParts, "**")
+		var triePath = strings.Join(matchedParts, "/")
+		matchResult, ok := DoNextMatch(triePath, node.children[key], r)
+		if ok {
+			return matchResult
+		}
+	}
+	return chain.EndOfChainFailedResult()
+}
+
+//Match node match
 func (node *Node) Match(parts []string) (*Node, []string, bool) {
 	key := parts[0]
 	childKeys := parts[1:]
@@ -368,7 +463,7 @@ func (node *Node) putPathVariable(pathVariable string, isReal bool, bizInfo inte
 
 func (node *Node) putNode(matchStr string, isReal bool, bizInfo interface{}) bool {
 
-	selfNode := &Node{endOfPath: isReal, matchStr: matchStr}
+	selfNode := &Node{endOfPath: isReal, matchStr: matchStr, PTrie: node.PTrie}
 	old := node.children[matchStr]
 	if old != nil {
 		if old.endOfPath && isReal {
@@ -390,7 +485,7 @@ func (node *Node) putNode(matchStr string, isReal bool, bizInfo interface{}) boo
 
 func (node *Node) putMatchAllNode(matchStr string, isReal bool, bizInfo interface{}) bool {
 
-	selfNode := &Node{endOfPath: isReal, matchStr: matchStr}
+	selfNode := &Node{endOfPath: isReal, matchStr: matchStr, PTrie: node.PTrie}
 	old := node.MatchAllNode
 	if old != nil {
 		if old.endOfPath && isReal {
