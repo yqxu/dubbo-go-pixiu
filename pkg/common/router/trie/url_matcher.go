@@ -6,12 +6,20 @@ import (
 )
 
 type UrlMatcher struct {
-	chain.MatchNode
 	chain.RouteConfigSet
+	chain.MatchNode
 
 	BelongTo chain.Chain
 	NextNode chain.MatchNode
 	Conf     Trie
+}
+
+func (matcher UrlMatcher) getCode() string {
+	return "url"
+}
+
+func (matcher UrlMatcher) RouteConfigRemove(ruleKey string) {
+	matcher.Conf.Remove(ruleKey)
 }
 
 type UrlParamMapping struct {
@@ -22,17 +30,18 @@ func getUseful(r *stdHttp.Request) string {
 	return r.URL.Host
 }
 
-func (matcher UrlMatcher) Append(matchNode chain.MatchNode) {
+func (matcher UrlMatcher) Append(matchNode chain.MatchNode)  chain.MatchNode{
 	matcher.NextNode = matchNode
+	return matchNode
 }
 
 func (matcher UrlMatcher) Next() chain.MatchNode {
 	return matcher.NextNode
 }
 
-func (matcher UrlMatcher) DoMatch(r *stdHttp.Request, path chain.MatchPath) {
+func (matcher UrlMatcher) DoMatch(r *stdHttp.Request, path chain.MatchPath) chain.MatchResult{
 	//Always the first node of chain so ,get config by MatchPath is unnecessary.
-	matcher.Conf.MatchForChain(r)
+	return matcher.Conf.MatchForChain(r)
 }
 
 func BuildUrlMatchPath(path string) chain.MatchPath {
@@ -41,3 +50,18 @@ func BuildUrlMatchPath(path string) chain.MatchPath {
 		Path:        path,
 	}}}
 }
+
+func (matcher UrlMatcher) FindRouteConfig(rule interface{}) interface{}{
+	return _,_,_,_ = matcher.Conf.Get(rule)
+}
+func (matcher UrlMatcher) RouteConfigPut(rule interface{}){
+	matcher.Conf.Put()
+}
+
+func RouteConfigRemove(ruleKey string){
+
+}
+
+
+
+

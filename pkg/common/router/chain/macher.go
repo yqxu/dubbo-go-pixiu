@@ -25,8 +25,8 @@ type Matcher interface {
 }
 
 type RouteConfigSet interface {
-	FindRouteConfig(rule interface{}) interface{}
-	RouteConfigPut(rule interface{})
+	FindRouteConfig(ruleKey string) interface{}
+	RouteConfigPut(ruleKey string, rule interface{})
 	RouteConfigRemove(ruleKey string)
 }
 
