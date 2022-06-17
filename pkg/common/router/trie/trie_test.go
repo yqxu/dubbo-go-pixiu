@@ -18,6 +18,8 @@
 package trie
 
 import (
+	"go/ast"
+	"go/parser"
 	"testing"
 )
 
@@ -161,23 +163,6 @@ func TestTrie_Clear(t *testing.T) {
 	assert.True(t, trie.IsEmpty())
 }
 
-func TestTrie_ParamMatch(t *testing.T) {
-	trie := NewTrie()
-	ret, _ := trie.Put("PUT/path1/:pathvarible1/path2/:pathvarible2", "")
-	assert.True(t, ret)
-	str := "https://www.baidu.com/path1/param1/path2/param2?aaaaa=aaaaa"
-
-	node, _, ok := trie.Match(stringutil.GetTrieKey("PUT", str))
-	assert.True(t, ok)
-	assert.Equal(t, "", node.GetBizInfo())
-
-	ret, _ = trie.Put("PUT/path1/:pathvarible1/path2", "")
-	node, _, ok = trie.Match(stringutil.GetTrieKey("PUT", str))
-	assert.True(t, ok)
-	assert.Equal(t, "", node.GetBizInfo())
-	assert.True(t, ret)
-}
-
 func TestTrie_MatchAndGet(t *testing.T) {
 	trie := NewTrie()
 
@@ -257,4 +242,47 @@ func TestTrie_MatchAndGet(t *testing.T) {
 	node, _, ok = trie.Match("/path1/12/path2/12?a=b")
 	assert.True(t, ok)
 	assert.True(t, node.GetBizInfo() == "test1")
+}
+
+func TestTrie_ParamMatch(t *testing.T) {
+	trie := NewTrie()
+	ret, _ := trie.Put("PUT/path1/:pathvarible1/path2/:pathvarible2", "")
+	assert.True(t, ret)
+	str := "https://www.baidu.com/path1/param1/path2/param2?aaaaa=aaaaa"
+
+	node, _, ok := trie.Match(stringutil.GetTrieKey("PUT", str))
+	assert.True(t, ok)
+	assert.Equal(t, "", node.GetBizInfo())
+
+	ret, _ = trie.Put("PUT/path1/:pathvarible1/path2", "")
+	node, _, ok = trie.Match(stringutil.GetTrieKey("PUT", str))
+	assert.True(t, ok)
+	assert.Equal(t, "", node.GetBizInfo())
+	assert.True(t, ret)
+}
+
+func Test_AST(t *testing.T) {
+	var str = "hash(toint(substr(var1, 1, 2)), 100)"
+	exp, _ := parser.ParseExpr(str)
+	ast.Inspect(exp, func(n ast.Node) bool {
+		// Find Return Statements
+		_, ok := n.(*ast.ReturnStmt)
+		if ok {
+			t.Logf("return statement found on line")
+			return true
+		}
+
+		// Find Functions
+		fn, ok := n.(*ast.FuncDecl)
+		if ok {
+			var exported string
+			if fn.Name.IsExported() {
+				exported = "exported "
+			}
+			t.Logf("%sfunction declaration found on line", exported)
+			return true
+		}
+
+		return true
+	})
 }

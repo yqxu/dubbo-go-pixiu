@@ -19,7 +19,6 @@ package model
 
 import (
 	stdHttp "net/http"
-	"regexp"
 )
 
 import (
@@ -44,8 +43,8 @@ type (
 		Prefix string `yaml:"prefix" json:"prefix" mapstructure:"prefix"`
 		Path   string `yaml:"path" json:"path" mapstructure:"path"`
 		// Regex   string          `yaml:"regex" json:"regex" mapstructure:"regex"` TODO: next version
-		Methods []string `yaml:"methods" json:"methods" mapstructure:"methods"`
-		// Headers []HeaderMatcher `yaml:"headers" json:"headers" mapstructure:"headers"`
+		Methods []string        `yaml:"methods" json:"methods" mapstructure:"methods"`
+		Headers []HeaderMatcher `yaml:"headers" json:"headers" mapstructure:"headers"`
 		// pathRE  *regexp.Regexp
 	}
 
@@ -62,12 +61,22 @@ type (
 		Dynamic   bool      `yaml:"dynamic" json:"dynamic" mapstructure:"dynamic"`
 	}
 
-	// Name header key, Value header value, Regex header value is regex
+	// HeaderMatcher Name header key, Value header value, Regex header value is regex， Ref:https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto#envoy-v3-api-msg-config-route-v3-headermatcher
 	HeaderMatcher struct {
-		Name    string   `yaml:"name" json:"name" mapstructure:"name"`
-		Values  []string `yaml:"values" json:"values" mapstructure:"values"`
-		Regex   bool     `yaml:"regex" json:"regex" mapstructure:"regex"`
-		valueRE *regexp.Regexp
+		//Name    string   `yaml:"name" json:"name" mapstructure:"name"`
+		//Values  []string `yaml:"values" json:"values" mapstructure:"values"`
+		//Regex   bool     `yaml:"regex" json:"regex" mapstructure:"regex"`
+		//valueRE *regexp.Regexp
+		Name           string `json:"name"`
+		ExactMatch     string `json:"exact_match"`
+		SafeRegexMatch string `json:"safe_regex_match"`
+		RangeMatch     string `json:"range_match"`
+		PresentMatch   string `json:"present_match"`
+		PrefixMatch    string `json:"prefix_match"`
+		SuffixMatch    string `json:"suffix_match"`
+		ContainsMatch  string `json:"contains_match"`
+		StringMatch    string `json:"string_match"`
+		InvertMatch    string `json:"invert_match"`
 	}
 )
 

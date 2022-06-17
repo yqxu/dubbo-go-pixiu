@@ -1,6 +1,9 @@
 package chain
 
-import stdHttp "net/http"
+import (
+	"github.com/dubbogo/dubbo-go-pixiu-filter/pkg/xds/model"
+	stdHttp "net/http"
+)
 
 type MatchPathNode struct {
 	MatcherName string
@@ -25,8 +28,8 @@ type Matcher interface {
 }
 
 type RouteConfigSet interface {
-	FindRouteConfig(ruleKey string) interface{}
-	RouteConfigPut(ruleKey string, rule interface{})
+	FindRouteConfig(ruleKey string) model.RouterMatch
+	RouteConfigPut(ruleKey string, rule model.RouterMatch)
 	RouteConfigRemove(ruleKey string)
 }
 
@@ -89,6 +92,6 @@ func (matcher *AlwaysTrue) Append(node MatchNode) {
 func (matcher *AlwaysTrue) Config() {
 	return
 }
-func (matcher *AlwaysTrue) PutConfig(conf interface{}) {
+func (matcher *AlwaysTrue) PutConfig(conf model.RouterMatch) {
 	return
 }
